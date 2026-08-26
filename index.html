@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donnely · Obras en Construcción</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#12151F; --panel:#1B1F2D; --panel2:#232838; --line:#2E3447;
+  --teal:#19C7B4; --gold:#F6C453; --green:#3DD68C; --red:#FF6B6B; --amber:#FFA94D;
+  --purple:#B58CF0; --txt:#EAEEF6; --sub:#8C95AC; --faint:#5A6478;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:28px 34px 60px; background:var(--bg); color:var(--txt);
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+}
+.wrap{max-width:1280px;margin:0 auto}
+.brand{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:24px}
+.brand h1{font-size:21px;margin:0;font-weight:700}
+.brand .tick{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--amber);margin-right:9px;vertical-align:middle}
+.brand .sub{color:var(--sub);font-size:12.5px;margin-top:3px;font-style:italic}
+#data_status{font-size:11px;font-weight:600;letter-spacing:.2px}
+#data_status.ok{color:var(--green)}
+#data_status.err{color:var(--amber)}
+
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(4,1fr);margin-bottom:20px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent,var(--amber))}
+.kpi .lbl{font-size:10.5px;font-weight:700;letter-spacing:1.2px;color:var(--sub);text-transform:uppercase}
+.kpi .val{font-size:26px;font-weight:700;margin-top:6px}
+.kpi .meta{font-size:11px;color:var(--sub);margin-top:4px}
+
+.section-title{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--amber);
+  text-transform:uppercase;display:flex;align-items:center;gap:10px;margin:28px 0 12px}
+.section-title::after{content:"";flex:1;height:1px;background:var(--line)}
+
+.charts{grid-template-columns:1.4fr 1fr;margin-bottom:8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.card h3{margin:0 0 12px;font-size:13px;color:var(--sub);font-weight:600}
+.cwrap{position:relative;height:300px}
+
+.tbl-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:13px}
+th,td{padding:10px 14px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1}
+thead th{color:var(--sub);font-weight:700;font-size:10.5px;letter-spacing:.8px;text-transform:uppercase;
+  border-bottom:1px solid var(--line);background:var(--panel2)}
+thead th:first-child{background:var(--panel2)}
+tbody tr:hover td{background:rgba(255,255,255,.03)}
+tr.total td{font-weight:700;border-top:2px solid var(--line);color:var(--gold)}
+tr.total td:first-child{background:var(--panel)}
+
+.note{font-size:11.5px;color:var(--sub);line-height:1.6;background:var(--panel2);
+  border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:20px}
+.foot{color:var(--faint);font-size:11px;margin-top:26px;text-align:center}
+
+@media(max-width:900px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .charts{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div>
+      <h1><span class="tick"></span>Donnely Ltda. · Obras en Construcción</h1>
+      <div class="sub">Consolidado de compras — Centro de Costo "Obras en Construcción" · 2026</div>
+    </div>
+    <div class="sub" id="data_status" style="margin-top:4px;font-style:normal">⏳ Cargando datos desde Google Sheets…</div>
+  </div>
+
+  <div class="grid kpis">
+    <div class="kpi" style="--accent:var(--amber)">
+      <div class="lbl">Total acumulado</div>
+      <div class="val" id="k_total">—</div>
+      <div class="meta" id="k_total_sub">—</div>
+    </div>
+    <div class="kpi" style="--accent:var(--teal)">
+      <div class="lbl">Promedio mensual</div>
+      <div class="val" id="k_prom">—</div>
+      <div class="meta">Sobre meses con movimiento</div>
+    </div>
+    <div class="kpi" style="--accent:var(--red)">
+      <div class="lbl">Mes de mayor gasto</div>
+      <div class="val" id="k_max_mes">—</div>
+      <div class="meta" id="k_max_val">—</div>
+    </div>
+    <div class="kpi" style="--accent:var(--purple)">
+      <div class="lbl">Documentos de compra</div>
+      <div class="val" id="k_docs">—</div>
+      <div class="meta">Facturas/boletas asociadas a la obra</div>
+    </div>
+  </div>
+
+  <div class="section-title">Evolución mensual por ítem</div>
+  <div class="grid charts">
+    <div class="card"><h3>Compras por mes, apiladas por ítem</h3><div class="cwrap"><canvas id="chStack"></canvas></div></div>
+    <div class="card"><h3>Participación por ítem (acumulado)</h3><div class="cwrap"><canvas id="chDonut"></canvas></div></div>
+  </div>
+
+  <div class="section-title">Consolidado — ítem × mes (CLP netos)</div>
+  <div class="tbl-wrap">
+    <table id="tbl_items">
+      <thead><tr id="tbl_items_head"></tr></thead>
+      <tbody id="tbl_items_body"></tbody>
+      <tfoot id="tbl_items_foot"></tfoot>
+    </table>
+  </div>
+
+  <div class="section-title">Principales proveedores (acumulado)</div>
+  <div class="tbl-wrap">
+    <table id="tbl_prov">
+      <thead><tr><th>Proveedor</th><th>Monto neto</th><th>% del total</th><th>Documentos</th></tr></thead>
+      <tbody id="tbl_prov_body"></tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <b>Cómo leer este tablero.</b> Los montos son <b>netos</b> (sin IVA — el IVA de estas compras es
+    crédito fiscal recuperable). La fuente es la hoja <b>"L-Compras"</b> de la planilla de Donnely,
+    filtrando únicamente las filas cuyo <b>Centro de Costo</b> es "Obras en Construcción". El ítem de
+    cada compra sale de la columna <b>Detalle</b> de esa misma fila (Honorarios, Materiales,
+    Maquinaria, Combustible, Arriendos, etc.) — variantes de mayúsculas/typos se agrupan
+    automáticamente en el ítem correspondiente. El tablero se extiende solo al agregar meses nuevos
+    a la planilla, sin tocar este archivo.
+  </div>
+
+  <div class="foot">Datos: Libro de Compras Donnely Ltda. 2026 · Obras en Construcción · Actualizado en vivo desde Google Sheets</div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// Datos de RESPALDO — snapshot real tomado el 2026-08-25, se usan solo si falla la
+// lectura en vivo del Google Sheet. Ítem = valor canonizado de la columna "Detalle"
+// para las filas con Centro de Costo = "Obras en Construcción". Meses 1-8 = Ene-Ago 2026.
+// ══════════════════════════════════════════════════════════
+let ITEMS = ['Honorarios','Materiales','Maquinaria','Combustible','Arriendos','Otros'];
+let D = {
+  "Honorarios":  [38155655, 45000, 26612572, 35362994, 27221790, 200000, 16147940, 13683230],
+  "Materiales":  [5660807, 4917244, 16134779, 38964622, 22327869, 12778717, 6756431, 7984595],
+  "Maquinaria":  [0, 462000, 41987000, 1109520, 6959000, 2833000, 2457000, 4777500],
+  "Combustible": [133117, 0, 495843, 1553462, 149857, 1056259, 1451168, 1200989],
+  "Arriendos":   [0, 0, 0, 0, 0, 0, 0, 0],
+  "Otros":       [0, 0, 0, 0, 0, 0, 0, 0]
+};
+let MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto'];
+let TOTAL_DOCS = 437;
+let PROVEEDORES = [
+  ["INYERMANGC SPA", 153206338],
+  ["JR ARRIENDOS LIMITADA", 46136000],
+  ["Hormigones Polpaico S.A.", 41921259],
+  ["CONSTRUMART S A", 20586512],
+  ["PRODALAM S.A.", 17458527],
+  ["SODIMAC S.A.", 13460136],
+  ["EASY RETAIL S.A.", 6136716],
+  ["RENTAS MAQUINARIAS HEB LIMITADA", 5326500],
+  ["NUEVO COPAYAPU COMBUSTIBLES SPA", 4794063],
+  ["COMERCIAL AVALOS GREBE LIMITADA", 4254000]
+];
+
+const COLORS = {Honorarios:'#19C7B4', Materiales:'#F6C453', Maquinaria:'#B58CF0', Combustible:'#FF6B6B', Arriendos:'#3DD68C', Otros:'#8C95AC'};
+
+function setDataStatus(ok,msg){
+  const el=document.getElementById('data_status'); if(!el)return;
+  if(ok){
+    el.textContent='● Datos en línea · actualizado '+new Date().toLocaleString('es-CL',{dateStyle:'short',timeStyle:'short'});
+    el.className='sub ok';
+  }else{
+    el.textContent='⚠ Usando datos de respaldo'+(msg?' ('+msg+')':'')+' — revisa la URL del Sheet';
+    el.className='sub err';
+  }
+}
+
+function clp(n){
+  return '$'+Math.round(n).toLocaleString('es-CL');
+}
+function clpM(n){
+  return '$'+(n/1e6).toFixed(1)+'M';
+}
+
+function parseNum(s){
+  if(s==null) return 0;
+  s=String(s).trim().replace(/\$/g,'').replace(/\s/g,'');
+  if(s==='') return 0;
+  let neg=false;
+  if(/^\(.*\)$/.test(s)){neg=true; s=s.slice(1,-1);}
+  const lastComma=s.lastIndexOf(','), lastDot=s.lastIndexOf('.');
+  if(lastComma>-1 && lastDot>-1){
+    if(lastComma>lastDot) s=s.replace(/\./g,'').replace(',','.');
+    else s=s.replace(/,/g,'');
+  } else if(lastComma>-1){
+    const parts=s.split(',');
+    if(parts[parts.length-1].length<=2) s=s.replace(',','.');
+    else s=s.replace(/,/g,'');
+  }
+  let n=parseFloat(s.replace(/[^0-9.\-]/g,''));
+  if(isNaN(n)) n=0;
+  return neg?-n:n;
+}
+
+function splitCSVLine(line){
+  const out=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(inQ){
+      if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else inQ=false; }
+      else cur+=ch;
+    } else {
+      if(ch==='"') inQ=true;
+      else if(ch===','){ out.push(cur); cur=''; }
+      else cur+=ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function norm(s){
+  return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+}
+
+function canonItem(raw){
+  const s = norm(raw);
+  if(s.includes('honorario')) return 'Honorarios';
+  if(s.includes('material')) return 'Materiales';
+  if(s.includes('maquinaria')) return 'Maquinaria';
+  if(s.includes('combust')) return 'Combustible';
+  if(s.includes('arriendo')) return 'Arriendos';
+  return 'Otros';
+}
+
+const MES_NOMBRES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// Localiza la fila de encabezado (contiene 'MES' y 'Centro de Costo') dentro de las primeras filas,
+// para no depender de un número de fila fijo si se insertan filas arriba en el Sheet.
+function findHeaderRow(rows){
+  for(let r=0;r<Math.min(rows.length,10);r++){
+    const cells=rows[r].map(c=>String(c||'').trim());
+    if(cells.includes('MES') && cells.includes('Centro de Costo') && cells.includes('Detalle')){
+      return r;
+    }
+  }
+  return -1;
+}
+
+function parseCompras(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim().length);
+  if(lines.length<2) return null;
+  const rows=lines.map(splitCSVLine);
+  const headerRow=findHeaderRow(rows);
+  if(headerRow<0) return null;
+  const header=rows[headerRow];
+  const idx=name=>header.indexOf(name);
+  const ccIdx=idx('Centro de Costo'), mesIdx=idx('MES'), detIdx=idx('Detalle'),
+        netoIdx=idx('Monto Neto'), provIdx=idx('PROVEEDOR');
+  if(ccIdx<0||mesIdx<0||detIdx<0||netoIdx<0) return null;
+
+  const dataRows=rows.slice(headerRow+1).filter(r=>r.length>Math.max(ccIdx,mesIdx,detIdx,netoIdx));
+  const obras=dataRows.filter(r=>norm(r[ccIdx])==='obras en construccion');
+  if(!obras.length) return null;
+
+  const mesesPresentes=new Set();
+  obras.forEach(r=>{ const m=parseInt(r[mesIdx],10); if(m>=1&&m<=12) mesesPresentes.add(m); });
+  const maxMes=Math.max(...mesesPresentes);
+  const mesesArr=[]; for(let m=1;m<=maxMes;m++) mesesArr.push(m);
+
+  const Dnew={}; ITEMS.forEach(it=>{ Dnew[it]=mesesArr.map(()=>0); });
+  const provTotales={};
+  let docs=0;
+
+  obras.forEach(r=>{
+    const m=parseInt(r[mesIdx],10);
+    if(!(m>=1&&m<=maxMes)) return;
+    const item=canonItem(r[detIdx]);
+    const v=parseNum(r[netoIdx]);
+    Dnew[item][m-1]+=v;
+    docs++;
+    if(provIdx>=0){
+      const p=String(r[provIdx]||'').trim()||'(sin nombre)';
+      provTotales[p]=(provTotales[p]||0)+v;
+    }
+  });
+
+  const provArr=Object.entries(provTotales).sort((a,b)=>b[1]-a[1]);
+
+  return {
+    D:Dnew,
+    MESES:mesesArr.map(m=>MES_NOMBRES[m-1]),
+    TOTAL_DOCS:docs,
+    PROVEEDORES:provArr
+  };
+}
+
+function sum(arr){ return arr.reduce((a,b)=>a+b,0); }
+
+function render(){
+  const nMeses=MESES.length;
+  const totalesPorMes=MESES.map((_,i)=>ITEMS.reduce((s,it)=>s+D[it][i],0));
+  const totalGeneral=sum(totalesPorMes);
+  const mesesConMov=totalesPorMes.filter(v=>v>0).length||1;
+
+  document.getElementById('k_total').textContent=clpM(totalGeneral);
+  document.getElementById('k_total_sub').textContent=clp(totalGeneral)+' · '+MESES[0]+'–'+MESES[nMeses-1];
+  document.getElementById('k_prom').textContent=clpM(totalGeneral/mesesConMov);
+
+  let maxIdx=0; totalesPorMes.forEach((v,i)=>{ if(v>totalesPorMes[maxIdx]) maxIdx=i; });
+  document.getElementById('k_max_mes').textContent=MESES[maxIdx];
+  document.getElementById('k_max_val').textContent=clp(totalesPorMes[maxIdx])+' netos';
+
+  document.getElementById('k_docs').textContent=TOTAL_DOCS.toLocaleString('es-CL');
+
+  // ── tabla ítem × mes ──
+  const thead=document.getElementById('tbl_items_head');
+  thead.innerHTML='<th>Ítem</th>'+MESES.map(m=>'<th>'+m.slice(0,3)+'</th>').join('')+'<th>Total</th>';
+  const tbody=document.getElementById('tbl_items_body');
+  tbody.innerHTML='';
+  ITEMS.forEach(it=>{
+    const vals=D[it];
+    const tot=sum(vals);
+    if(tot<=0) return; // oculta ítems sin movimiento (p.ej. Arriendos si aún no hay)
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+it+'</td>'+vals.map(v=>'<td>'+(v>0?clp(v):'—')+'</td>').join('')+'<td style="color:var(--gold);font-weight:700">'+clp(tot)+'</td>';
+    tbody.appendChild(tr);
+  });
+  const tfoot=document.getElementById('tbl_items_foot');
+  tfoot.innerHTML='<tr class="total"><td>TOTAL</td>'+totalesPorMes.map(v=>'<td>'+clp(v)+'</td>').join('')+'<td>'+clp(totalGeneral)+'</td></tr>';
+
+  // ── tabla proveedores ──
+  const tbodyP=document.getElementById('tbl_prov_body');
+  tbodyP.innerHTML='';
+  const provConDocs = PROVEEDORES.map(p=>Array.isArray(p)?p:p); // ya viene [nombre, monto]
+  provConDocs.slice(0,12).forEach(([nombre,monto])=>{
+    const tr=document.createElement('tr');
+    const pct=totalGeneral>0?(monto/totalGeneral*100):0;
+    tr.innerHTML='<td>'+nombre+'</td><td>'+clp(monto)+'</td><td>'+pct.toFixed(1)+'%</td><td>—</td>';
+    tbodyP.appendChild(tr);
+  });
+
+  // ── chart apilado ──
+  const stackCtx=document.getElementById('chStack');
+  if(window._chStack) window._chStack.destroy();
+  const itemsConDatos=ITEMS.filter(it=>sum(D[it])>0);
+  window._chStack=new Chart(stackCtx,{
+    type:'bar',
+    data:{
+      labels:MESES.map(m=>m.slice(0,3)),
+      datasets:itemsConDatos.map(it=>({
+        label:it, data:D[it], backgroundColor:COLORS[it]||'#8C95AC', borderRadius:3, maxBarThickness:46
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{stacked:true, grid:{display:false}, ticks:{color:'#8C95AC'}},
+        y:{stacked:true, grid:{color:'#2E3447'}, ticks:{color:'#8C95AC', callback:v=>'$'+(v/1e6).toFixed(0)+'M'}}
+      },
+      plugins:{
+        legend:{position:'bottom', labels:{color:'#EAEEF6', boxWidth:12, font:{size:11}}},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+clp(ctx.raw)}}
+      }
+    }
+  });
+
+  // ── donut ──
+  const donutCtx=document.getElementById('chDonut');
+  if(window._chDonut) window._chDonut.destroy();
+  const totalesPorItem=itemsConDatos.map(it=>sum(D[it]));
+  window._chDonut=new Chart(donutCtx,{
+    type:'doughnut',
+    data:{
+      labels:itemsConDatos,
+      datasets:[{data:totalesPorItem, backgroundColor:itemsConDatos.map(it=>COLORS[it]||'#8C95AC'), borderColor:'#1B1F2D', borderWidth:2}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{
+        legend:{position:'bottom', labels:{color:'#EAEEF6', boxWidth:12, font:{size:11}}},
+        tooltip:{callbacks:{label:ctx=>ctx.label+': '+clp(ctx.raw)+' ('+(ctx.raw/totalGeneral*100).toFixed(1)+'%)'}}
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// CONEXIÓN A GOOGLE SHEETS (CSV publicado) — hoja "L-Compras"
+// ══════════════════════════════════════════════════════════
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-fXOCkPmK3JhdTqVKEzCu3pcVSIDqE4bMHFWc_SeKPU1Fig_Ng-Bxb-WicqutE4N-2EISVrMa9aT0/pub?gid=1265752540&single=true&output=csv";
+
+async function boot(){
+  if(SHEET_CSV_URL && SHEET_CSV_URL.indexOf('http')===0){
+    try{
+      const res=await fetch(SHEET_CSV_URL,{cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const text=await res.text();
+      const parsed=parseCompras(text);
+      if(!parsed) throw new Error('CSV sin filas de Obras en Construcción');
+      D=parsed.D; MESES=parsed.MESES; TOTAL_DOCS=parsed.TOTAL_DOCS; PROVEEDORES=parsed.PROVEEDORES;
+      setDataStatus(true);
+    }catch(e){
+      console.warn('No se pudo leer el CSV del Google Sheet, usando datos de respaldo:',e);
+      setDataStatus(false, e.message);
+    }
+  } else {
+    setDataStatus(false,'URL no configurada');
+  }
+  render();
+}
+
+boot();
+</script>
+</body>
+</html>
